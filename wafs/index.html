@@ -4,40 +4,70 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Single Page Web App</title>
-  <link rel="stylesheet" href="./static/style.css">
+  <title>WAFS // Week 2</title>
+  <link rel="stylesheet" href="./static/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.6/handlebars.min.js" charset="utf-8" defer></script>
+  <script src="./static/aja/aja.min.js" charset="utf-8" defer></script>
+  <script src="./static/app.js" charset="utf-8" defer></script>
 </head>
 <body>
-  <nav>
-    <ul>
-      <li><a href="#home">Home</a></li>
-      <li><a href="#best-practices">Best Practices</a></li>
-    </ul>
-  </nav>
-  <section id="home">
-    <h1>Welcome home!</h1>
-    <p>
-      Bacon ipsum dolor amet ham bacon turducken, pastrami beef meatloaf biltong prosciutto short ribs jerky doner t-bone capicola jowl fatback. Biltong beef ribs pastrami, picanha filet mignon pork loin pig tri-tip frankfurter cupim. Beef venison meatloaf tri-tip, ground round pork belly pig. Shankle fatback tenderloin, flank burgdoggen short loin turkey beef ball tip. Pork belly turducken jowl beef burgdoggen swine brisket venison. Burgdoggen pork loin porchetta, shankle corned beef salami landjaeger prosciutto turkey swine turducken tri-tip.
-    </p>
-    <p>
-      Pig picanha turducken doner bresaola chuck shank. Turducken kevin burgdoggen alcatra landjaeger, meatball flank ribeye bacon pork loin kielbasa. Kevin bresaola andouille corned beef cupim. Kevin jowl salami, swine tail short ribs bacon.
-    </p>
-    <p>
-      Ground round jowl pancetta beef ribs. Rump chuck tail alcatra ham kevin turkey tenderloin porchetta pastrami pig cupim tongue beef ribs. Bresaola t-bone short ribs shankle ribeye ground round shoulder pork loin turkey. Ham hock beef ribs turducken, frankfurter cow picanha short ribs ball tip capicola turkey tenderloin cupim pork loin bacon. Frankfurter venison pork loin boudin jerky, short loin ground round kevin tri-tip ham hock. Meatball venison pig frankfurter strip steak tri-tip pork loin corned beef.
-    </p>
-  </section>
-  <section id="best-practices">
-    <h1>Beste practices for Front-end code</h1>
-    <p>
-      Bacon ipsum dolor amet ham bacon turducken, pastrami beef meatloaf biltong prosciutto short ribs jerky doner t-bone capicola jowl fatback. Biltong beef ribs pastrami, picanha filet mignon pork loin pig tri-tip frankfurter cupim. Beef venison meatloaf tri-tip, ground round pork belly pig. Shankle fatback tenderloin, flank burgdoggen short loin turkey beef ball tip. Pork belly turducken jowl beef burgdoggen swine brisket venison. Burgdoggen pork loin porchetta, shankle corned beef salami landjaeger prosciutto turkey swine turducken tri-tip.
-    </p>
-    <p>
-      Pig picanha turducken doner bresaola chuck shank. Turducken kevin burgdoggen alcatra landjaeger, meatball flank ribeye bacon pork loin kielbasa. Kevin bresaola andouille corned beef cupim. Kevin jowl salami, swine tail short ribs bacon.
-    </p>
-    <p>
-      Ground round jowl pancetta beef ribs. Rump chuck tail alcatra ham kevin turkey tenderloin porchetta pastrami pig cupim tongue beef ribs. Bresaola t-bone short ribs shankle ribeye ground round shoulder pork loin turkey. Ham hock beef ribs turducken, frankfurter cow picanha short ribs ball tip capicola turkey tenderloin cupim pork loin bacon. Frankfurter venison pork loin boudin jerky, short loin ground round kevin tri-tip ham hock. Meatball venison pig frankfurter strip steak tri-tip pork loin corned beef.
-    </p>
-  </section>
-  <script src="./static/app.js"></script>
+  <main>
+    <nav>
+      <h1>Weather api</h1>
+      <a href="#current">current</a>
+      <a href="#hourly">hourly</a>
+    </nav>
+    <section id="current"></section>
+    <section id="hourly">
+      <div class="filter-station">
+        <label class="label"><input type="checkbox" name="Clear"><img src="http://icons.wxug.com/i/c/v4/clear.svg" alt="Clear"></label>
+        <label class="label"><input type="checkbox" name="Overcast"><img src="http://icons.wxug.com/i/c/v4/cloudy.svg" alt="Overcast"></label>
+        <label class="label"><input type="checkbox" name="Partly Cloudy"><img src="http://icons.wxug.com/i/c/v4/mostlysunny.svg" alt="Partly Cloudy"></label>
+        <label class="label"><input type="checkbox" name="Fog"><img src="http://icons.wxug.com/i/c/v4/hazy.svg" alt="Fog"></label>
+        <label class="label"><input type="checkbox" name="Chance of Rain"><img src="http://icons.wxug.com/i/c/v4/chancerain.svg" alt="Chance of Rain"></label>
+        <label class="label"><input type="checkbox" name="Rain"><img src="http://icons.wxug.com/i/c/v4/rain.svg" alt="Rain"></label>
+        <label class="label"><input type="checkbox" name="Snow"><img src="http://icons.wxug.com/i/c/v4/snow.svg" alt="Snow"></label>
+        <label class="label"><input type="checkbox" name="Tstorm"><img src="http://icons.wxug.com/i/c/v4/tstorms.svg" alt="Tstorm"></label>
+      </div>
+      <section class="hourly-container"></section>
+    </section>
+    <!-- Handlebars script template -->
+    <script id="template-current" type="text/x-handlebars-template">
+      <article class="current-data">
+        <dl>
+          <dt>Temprature</dt>
+          <dd>{{current.temp_c}}<sup>˚C</sup></dd>
+        </dl>
+        <dl>
+          <dt>Location</dt>
+          <dd>{{current.observation_location.city}}, {{current.observation_location.country}}</dd>
+          <dt>Time</dt>
+          <dd>{{timestamp}}</dd>
+          <dt>Date</dt>
+          <dd>{{datestamp}}</dd>
+        </dl>
+        <dl>
+          <dt>Wind speed</dt>
+          <dd><img src="./static/img/plane.svg" alt="wind-icon"><em>{{current.wind_kph}}km/h</em></dd>
+          <dt>Humidity</dt>
+          <dd><img src="./static/img/drop-silhouette.svg" alt="humidity-icon"><em>{{current.relative_humidity}}</em></dd>
+          <dt>Condition</dt>
+          <dd><img src="{{current.icon_url}}" alt="{{current.icon}}"></dd>
+        </dl>
+      </article>
+    </script>
+    <script id="template-hourly" type="text/x-handlebars-template">
+      <article class="hourly-data">
+        <h1><time>{{FCTTIME.pretty}}</time></h1>
+        <ul>
+          <li>Condition: {{condition}}</li>
+          <li>Temprature: {{temp.metric}}<sup>˚C</sup></li>
+          <li>Feels like: {{feelslike.metric}}<sup>˚C</sup></li>
+          <li>Wind speed: {{wspd.metric}}km/h</li>
+        </ul>
+        <img src="{{icon_url}}" alt="weather condition {{icon}}">
+      </article>
+    </script>
+  </main>
 </body>
 </html>
