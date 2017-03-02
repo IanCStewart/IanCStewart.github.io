@@ -1,43 +1,48 @@
-/*global window, document, aja, Handlebars*/
+/*global window, document, aja, Handlebars, config, localStorage*/
 (function(){
-  'use strict';
-
   const appSettings = {
     current: document.querySelector('#current'),
     hourly: document.querySelector('.hourly-container'),
-    detail: document.querySelector('#hourly-detail'),
     templateCurrent: Handlebars.compile(document.querySelector('#template-current').innerHTML),
     templateHourly: Handlebars.compile(document.querySelector('#template-hourly').innerHTML),
-    urlHourly: 'https://api.wunderground.com/api/7f0aee996268ea76/hourly/q/autoip.json',
-    urlCurrent: 'https://api.wunderground.com/api/7f0aee996268ea76/conditions/q/autoip.json',
+    url(parameter) { return `https://api.wunderground.com/api/${config.API_KEY}/${parameter}/q/autoip.json`;},
     html: ''
   };
 
-  const weatherData = {
-    datestamp: '',
-    timestamp: '',
-    current: '',
-    hourly: ''
+  const emptyState = {
+    noLenght(type) {
+      return (
+        `
+          <div class="empty-state">
+            <h1>No data<h1>
+            <p>The ${type} data seems to be empty</p>
+            ${type === 'filter' ? '<p>Try turning on different filters</p>' : null}
+          </div>
+        `
+      );
+    },
+    connection: `
+      <div class="empty-state">
+        <h1>Connection issue</h1>
+        <p>Seems like there is a problem with the connection to the API. Please check your internet connectivity.</p>
+      </div>
+    `
   };
 
   const app = {
     init() {
-      routes.init();
-      filter.init();
-      getData.current();
-      getData.hourly();
-    },
-    render() {
-      weatherData.current && weatherData.hourly ? render.init(weatherData) : null;
+      routes.listen();
     }
   };
 
   const routes = {
-    pages: ['#current', '#hourly'],
-    init() {
+    listen() {
+      store.hydrate();
       section.toggle(window.location.hash);
       window.addEventListener('hashchange', () => section.toggle(window.location.hash), false);
-    }
+      document.querySelector('.filter-station').addEventListener('click', () => store.filter(), false);
+    },
+    pages: ['#current', '#hourly']
   };
 
   const section = {
@@ -48,88 +53,105 @@
         ? document.querySelector(page).classList.remove('invisible')
         : document.querySelector(page).classList.add('invisible');
       });
+    },
+    renderInitial(data) {
+      appSettings.current.innerHTML = '';
+      appSettings.hourly.innerHTML = '';
+      appSettings.html = appSettings.templateCurrent(data);
+      appSettings.current.innerHTML = appSettings.html;
+      data.hourly.forEach(function (item) {
+        appSettings.html = appSettings.templateHourly(item);
+        appSettings.hourly.innerHTML += appSettings.html;
+      });
+    },
+    renderFiltered(data) {
+      appSettings.hourly.innerHTML = '';
+      data.length > 0
+      ? data.map(function (item) {
+        appSettings.html = appSettings.templateHourly(item);
+        appSettings.hourly.innerHTML += appSettings.html;
+      })
+      : appSettings.hourly.innerHTML += emptyState.noLenght('filter');
+    },
+    renderError(filter) {
+      appSettings.html = emptyState.connection;
+      if (filter) {
+        appSettings.html = emptyState.noLenght('filter');
+        appSettings.hourly.innerHTML = appSettings.html;
+      } else {
+        appSettings.current.innerHTML = appSettings.html;
+        appSettings.hourly.innerHTML = appSettings.html;
+      }
     }
   };
 
-  const storeData = {
-    current(data) {
+  const store = {
+    hydrate() {
+      const weatherData = JSON.parse(localStorage.getItem('weatherData'));
+      if (!weatherData) {
+        request.data();
+      } else {
+        const date = new Date();
+        const minutes = '0' + date.getMinutes();
+        const month = '0' + date.getMonth();
+        const formattedDate = `${date.getDate()}-${month.substr(-2)}-${date.getFullYear()}`;
+        const timestamp = weatherData.timestamp.split(':');
+        if (formattedDate != weatherData.datestamp) {
+          request.data();
+        } else if (timestamp[0] * 1 < date.getHours() && timestamp[1] * 1 < minutes.substr(-2)) {
+          request.data();
+        } else {
+          section.renderInitial(weatherData);
+        }
+      }
+    },
+    filter() {
+      const weatherData = JSON.parse(localStorage.getItem('weatherData'));
+      const filteredData = [];
+      document.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+        if (checkbox.checked) {
+          checkbox.name === 'Partly Cloudy'
+          ? filteredData.push(weatherData.hourly.filter((d) => d.condition.includes('Cloudy')))
+          : filteredData.push(weatherData.hourly.filter((d) => d.condition === checkbox.name));
+        }
+      });
+      filteredData.length === 0 ? section.renderFiltered(weatherData.hourly) : section.renderFiltered([].concat.apply([], filteredData));
+    },
+    data(data) {
+      localStorage.setItem('weatherData', JSON.stringify(data));
+      this.hydrate();
+    }
+  };
+
+  const request = {
+    data() {
+      const apiData = {};
       const date = new Date();
       const minutes = '0' + date.getMinutes();
       const seconds = '0' + date.getSeconds();
       const month = '0' + date.getMonth();
       const formattedTime = `${date.getHours()}:${minutes.substr(-2)}:${seconds.substr(-2)}`;
       const formattedDate = `${date.getDate()}-${month.substr(-2)}-${date.getFullYear()}`;
-      weatherData.current = data.current_observation;
-      weatherData.datestamp = formattedTime;
-      weatherData.timestamp = formattedDate;
-      app.render();
+      apiData.datestamp = formattedDate;
+      apiData.timestamp = formattedTime;
+      Promise.all([this.get('conditions'), this.get('hourly')])
+        .then(function(results) {
+          apiData.current = results[0].current_observation;
+          apiData.hourly = results[1].hourly_forecast;
+          store.data(apiData);
+        })
+        .catch(section.renderError());
     },
-    hourly(data) {
-      weatherData.hourly = data.hourly_forecast;
-      app.render();
-    }
-  };
-
-  const render = {
-    init(data) {
-      appSettings.html = appSettings.templateCurrent(data);
-      appSettings.current.innerHTML += appSettings.html;
-      data.hourly.forEach(function (item) {
-        appSettings.html = appSettings.templateHourly(item);
-        appSettings.hourly.innerHTML += appSettings.html;
+    get(type) {
+      const promise = new Promise(function(resolve) {
+        aja()
+        .url(appSettings.url(type))
+        .on('success', function(data){
+          resolve(data);
+        })
+        .go();
       });
-    },
-    filteredData(data) {
-      console.log(data);
-      appSettings.hourly.innerHTML = '';
-      data.map(function (item) {
-        appSettings.html = appSettings.templateHourly(item);
-        appSettings.hourly.innerHTML += appSettings.html;
-      });
-    },
-    clearedFilter(data) {
-      appSettings.hourly.innerHTML = '';
-      data.hourly.forEach(function (item) {
-        appSettings.html = appSettings.templateHourly(item);
-        appSettings.hourly.innerHTML += appSettings.html;
-      });
-    }
-  };
-
-  const filter = {
-    init() {
-      document.querySelector('.filter-station').addEventListener('click', () => getData.filter(), false);
-    }
-  };
-
-  const getData = {
-    current() {
-      aja()
-      .url(appSettings.urlCurrent)
-      .on('success', function(data){
-         storeData.current(data);
-      })
-      .go();
-    },
-    hourly() {
-      aja()
-      .url(appSettings.urlHourly)
-      .on('success', function(data){
-         storeData.hourly(data);
-      })
-      .go();
-    },
-    // TODO: filter station doesn't seem to stack the data :(
-    filter() {
-      const filteredData = [];
-      document.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
-        checkbox.checked
-        ? checkbox.name === 'Partly Cloudy'
-        ? filteredData.push(weatherData.hourly.filter((d) => d.condition.includes('Cloudy')))
-        : filteredData.push(weatherData.hourly.filter((d) => d.condition === checkbox.name))
-        : null;
-      });
-      filteredData.length === 0 ? render.clearedFilter(weatherData) : render.filteredData(...filteredData);
+      return promise;
     }
   };
 
